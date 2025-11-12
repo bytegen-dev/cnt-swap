@@ -98,7 +98,8 @@ const { swapTokens } = require("./adaUsdmSwap.js");
 // In your route handler or service
 async function handleSwap(req, res) {
   try {
-    const { mnemonic, amount, isFromAda, fromToken, toToken, poolId } = req.body;
+    const { mnemonic, amount, isFromAda, fromToken, toToken, poolId } =
+      req.body;
 
     const result = await swapTokens(
       mnemonic,
@@ -112,12 +113,12 @@ async function handleSwap(req, res) {
     res.json({
       success: true,
       txHash: result.txHash,
-      walletAddress: result.walletAddress
+      walletAddress: result.walletAddress,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 }
@@ -133,12 +134,20 @@ import { swapTokens } from "./adaUsdmSwap.js";
 
 export const swapMiddleware = async (req, res, next) => {
   try {
-    const { mnemonic, amount, isFromAda, fromToken, toToken, poolId } = req.body;
+    const { mnemonic, amount, isFromAda, fromToken, toToken, poolId } =
+      req.body;
 
     // Validate required fields
-    if (!mnemonic || !amount || typeof isFromAda !== "boolean" || !fromToken || !toToken || !poolId) {
+    if (
+      !mnemonic ||
+      !amount ||
+      typeof isFromAda !== "boolean" ||
+      !fromToken ||
+      !toToken ||
+      !poolId
+    ) {
       return res.status(400).json({
-        error: "Missing required parameters"
+        error: "Missing required parameters",
       });
     }
 
@@ -158,7 +167,7 @@ export const swapMiddleware = async (req, res, next) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -172,7 +181,7 @@ const router = express.Router();
 router.post("/swap", swapMiddleware, (req, res) => {
   res.json({
     success: true,
-    data: req.swapResult
+    data: req.swapResult,
   });
 });
 ```
@@ -187,7 +196,9 @@ import { swapTokens } from "./adaUsdmSwap.js";
 
 export class SwapService {
   constructor(config = {}) {
-    this.defaultPoolId = config.defaultPoolId || "64f35d26b237ad58e099041bc14c687ea7fdc58969d7d5b66e2540ef";
+    this.defaultPoolId =
+      config.defaultPoolId ||
+      "64f35d26b237ad58e099041bc14c687ea7fdc58969d7d5b66e2540ef";
     this.defaultSlippage = config.defaultSlippage || 0.03;
   }
 
@@ -229,7 +240,7 @@ export class SwapService {
 import { SwapService } from "./SwapService.js";
 
 const swapService = new SwapService({
-  defaultPoolId: "64f35d26b237ad58e099041bc14c687ea7fdc58969d7d5b66e2540ef"
+  defaultPoolId: "64f35d26b237ad58e099041bc14c687ea7fdc58969d7d5b66e2540ef",
 });
 
 // In your controller
@@ -239,7 +250,7 @@ const result = await swapService.swapAdaToToken(
   {
     policyId: "c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad",
     assetName: "5553444d",
-    name: "USDM"
+    name: "USDM",
   }
 );
 ```
@@ -255,14 +266,14 @@ export const swapConfig = {
     blockfrostUrl: "https://cardano-mainnet.blockfrost.io/api/v0",
     network: "Mainnet",
     defaultPoolId: "64f35d26b237ad58e099041bc14c687ea7fdc58969d7d5b66e2540ef",
-    slippage: 0.03
+    slippage: 0.03,
   },
   preview: {
     blockfrostUrl: "https://cardano-preview.blockfrost.io/api/v0",
     network: "Preview",
     defaultPoolId: "your-preview-pool-id",
-    slippage: 0.05 // Higher slippage for testnet
-  }
+    slippage: 0.05, // Higher slippage for testnet
+  },
 };
 
 // Get config based on environment
@@ -290,19 +301,13 @@ app.use(bodyParser.json());
 // Swap endpoint
 app.post("/api/swap", async (req, res) => {
   try {
-    const {
-      mnemonic,
-      amount,
-      isFromAda,
-      fromToken,
-      toToken,
-      poolId
-    } = req.body;
+    const { mnemonic, amount, isFromAda, fromToken, toToken, poolId } =
+      req.body;
 
     // Validation
     if (!mnemonic || !amount || typeof isFromAda !== "boolean") {
       return res.status(400).json({
-        error: "Missing required parameters"
+        error: "Missing required parameters",
       });
     }
 
@@ -314,25 +319,25 @@ app.post("/api/swap", async (req, res) => {
       fromToken || {
         policyId: "c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad",
         assetName: "5553444d",
-        name: "USDM"
+        name: "USDM",
       },
       toToken || {
         policyId: "c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad",
         assetName: "5553444d",
-        name: "USDM"
+        name: "USDM",
       },
       poolId || "64f35d26b237ad58e099041bc14c687ea7fdc58969d7d5b66e2540ef"
     );
 
     res.json({
       success: true,
-      data: result
+      data: result,
     });
   } catch (error) {
     console.error("Swap error:", error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -381,14 +386,14 @@ async function safeSwap(params) {
     console.error("Swap failed:", {
       error: error.message,
       stack: error.stack,
-      params: { ...params, mnemonic: "***" } // Don't log mnemonic
+      params: { ...params, mnemonic: "***" }, // Don't log mnemonic
     });
 
     // Return user-friendly error
     return {
       success: false,
       error: error.message || "Swap failed",
-      code: error.code || "UNKNOWN_ERROR"
+      code: error.code || "UNKNOWN_ERROR",
     };
   }
 }
@@ -410,7 +415,7 @@ import rateLimit from "express-rate-limit";
 
 const swapLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10 // Limit each IP to 10 swap requests per windowMs
+  max: 10, // Limit each IP to 10 swap requests per windowMs
 });
 
 app.post("/api/swap", swapLimiter, async (req, res) => {
