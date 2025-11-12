@@ -671,14 +671,6 @@ Monitor your usage to avoid rate limiting.
 - [Blockfrost API Documentation](https://blockfrost.io/)
 - [Cardano Documentation](https://docs.cardano.org/)
 
-## License
-
-[Add your license here]
-
-## Contributing
-
-[Add contribution guidelines here]
-
 ---
 
 **Warning**: This application interacts with real funds on Cardano mainnet. Always test thoroughly and use at your own risk. Never share your mnemonic seed phrase or commit sensitive credentials to version control.
