@@ -1,114 +1,329 @@
-teps
-Building a swap consists of a few steps:
+# ADA Swap - SundaeSwap Integration
 
-Querying Pool Information
-Configuring your Swap Arguments
-Requesting a Signature & Submitting
-Let’s take each step and break it down so we can understand what’s going on behind the scenes.
+A Node.js application for swapping ADA and USDM tokens on the SundaeSwap DEX using the SundaeSwap SDK. This project provides both a programmatic API and a server endpoint for executing token swaps on Cardano.
 
-1. Querying Pool Information
-For our example, we’ll be using the Preview network, and a pool ident for ADA/RBERRY. If you’re testing this locally, make sure you have Eternl installed and are on the preview network and have at least 30 tADA in your wallet.
+## Overview
 
-Keep in mind that async/await should usually be handled inside a function unless you have top-level await enabled in your bundler. For our purposes, they will not be in functions for clarity.
+This application enables automated token swaps on the SundaeSwap protocol, specifically for ADA/USDM pairs. It uses the SundaeSwap SDK with Lucid Cardano for transaction building and signing.
 
-import { Blaze, Blockfrost, WebWallet } from "@blaze-cardano/sdk";
-import { ETxBuilderType, ISundaeSDKOptions, SundaeSDK } from "@sundaeswap/core";
+## Features
 
-// Get the API from the browser window.
-const myBlockfrostApiKey = "";
-const api = await window.cardano.eternl.enable();
-const blazeInstance = await Blaze.from(
-  new Blockfrost({
-    network: network ? "cardano-mainnet" : "cardano-preview",
-    projectId: myBlockfrostApiKey
-  }),
-  new WebWallet(api),
+- **Token Swapping**: Swap ADA to USDM and USDM to ADA
+- **REST API**: Express server with `/api/swap` endpoint
+- **SundaeSwap V3 Integration**: Uses latest V3 contracts
+- **Slippage Protection**: Configurable slippage tolerance (default: 3%)
+- **Mainnet Support**: Configured for Cardano mainnet
+
+## Prerequisites
+
+- Node.js 18 or higher
+- Cardano wallet with mnemonic seed phrase
+- Blockfrost API key (mainnet)
+- Sufficient ADA balance for transaction fees and swaps
+
+## Installation
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd ada-swap
+
+# Install dependencies
+npm install
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env with your Blockfrost API key and wallet mnemonic
+```
+
+## Environment Variables
+
+Create a `.env` file in the root directory:
+
+```bash
+# Blockfrost API Key (required)
+BLOCKFROST_API_KEY=your_blockfrost_api_key_here
+
+# Wallet Mnemonic (required - 12 or 24 words)
+WALLET_MNEMONIC="your twelve word seed phrase here"
+
+# Server Port (optional, defaults to 3002)
+PORT=3002
+```
+
+### Getting a Blockfrost API Key
+
+1. Go to [Blockfrost.io](https://blockfrost.io/)
+2. Sign up for a free account
+3. Create a new project
+4. Select **Mainnet** network
+5. Copy your API key
+
+**Security Note**: Never commit your `.env` file or share your mnemonic seed phrase.
+
+## Usage
+
+### Running the Server
+
+```bash
+npm start
+```
+
+The server will start on `http://localhost:3002` (or the port specified in `PORT`).
+
+### API Endpoint
+
+#### POST `/api/swap`
+
+Execute a token swap on SundaeSwap.
+
+**Request Body:**
+
+```json
+{
+  "mnemonic": "your twelve word seed phrase here",
+  "amount": 1,
+  "isFromAda": true,
+  "fromToken": {
+    "policyId": "c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad",
+    "assetName": "5553444d",
+    "name": "USDM"
+  },
+  "toToken": {
+    "policyId": "c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad",
+    "assetName": "5553444d",
+    "name": "USDM"
+  },
+  "poolId": "64f35d26b237ad58e099041bc14c687ea7fdc58969d7d5b66e2540ef"
+}
+```
+
+**Parameters:**
+
+- `mnemonic` (string, required): Wallet mnemonic seed phrase
+- `amount` (number, required): Amount to swap (in ADA or token units)
+- `isFromAda` (boolean, required): `true` for ADA → Token, `false` for Token → ADA
+- `fromToken` (object, required): Source token information
+- `toToken` (object, required): Destination token information
+- `poolId` (string, required): SundaeSwap pool identifier
+
+**Success Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "txHash": "abc123...",
+    "walletAddress": "addr1..."
+  }
+}
+```
+
+**Error Response:**
+
+```json
+{
+  "success": false,
+  "error": "Error message here"
+}
+```
+
+### Programmatic Usage
+
+You can also use the swap function directly in your code:
+
+```javascript
+import { swapTokens } from './adaUsdmSwap.js';
+
+const result = await swapTokens(
+  mnemonic,
+  amount,        // Amount to swap
+  isFromAda,     // true for ADA → Token, false for Token → ADA
+  fromToken,     // Token object
+  toToken,       // Token object
+  poolId         // Pool identifier
 );
 
-const options: ISundaeSDKOptions = {
-  wallet: {
-    name: "eternl",
-    network: "preview",
-    builder: {
-      blaze: blazeInstance,
-      type: ETxBuilderType.BLAZE,
-    },
-  },
-};
+console.log('Transaction Hash:', result.txHash);
+```
 
-const SDK = await new SundaeSDK(options);
+## How It Works
 
-const poolData = await SDK.query().findPoolData({
-  ident: "34c2b9d553d3a74b3ac67cc8cefb423af0f77fc84664420090e09990",
+### 1. Querying Pool Information
+
+The application queries SundaeSwap for pool data using the pool identifier:
+
+```javascript
+const queryProvider = new QueryProviderSundaeSwap("mainnet");
+const poolData = await queryProvider.findPoolData({
+  ident: poolId
 });
+```
 
-The first thing we do is setup a Lucid instance. This is because our options.builder config is set to use the ETxBuilderType.LUCID type.
-Next, we construct our SDK options config. We define that we’ll be using the Eternl wallet (defined as eternl to match the property on the window.cardano object), and set the network to preview.
-Then, we instantiate a new SundaeSDK instance. It is recommended to keep this instance as a singleton across your app, so that it’s not recreated every time.
-Finally, we query the SDK.query() method to get our default QueryProvider, which includes a convenience method for fetching pool data directly from the SundaeSwap API.
-2. Configuring Your Swap Arguments
-Before moving on, let’s add a couple new imports to our file:
+### 2. Configuring Swap Arguments
 
-import { AssetAmount } from "@sundaeswap/asset";
-import {
-  // ...the previous imports
-  ESwapType,
-  EDatumType,
-  ISwapConfigArgs,
-} from "@sundaeswap/core";
+The swap is configured with:
 
-The AssetAmount class is a tool for dealing with asset calculations with regard to their respective decimal places and metadata.
-The ESwapType, ISwapConfigArgs, and EDatumType will be used inside our configuration object.
-Next, let’s build our swap configuration object:
+- **Swap Type**: Market order with configurable slippage (default: 3%)
+- **Pool Data**: The queried pool information
+- **Destination Address**: Your wallet address (no datum required)
+- **Supplied Asset**: The amount and asset you're swapping
 
-// ...rest of our previous code
-
-const args: ISwapConfigArgs = {
+```javascript
+const args = {
   swapType: {
     type: ESwapType.MARKET,
-    slippage: 0.03,
+    slippage: 0.03,  // 3% slippage tolerance
   },
   pool: poolData,
   orderAddresses: {
     DestinationAddress: {
-      address: "...your address",
+      address: wallet.address,
       datum: {
         type: EDatumType.NONE,
       },
     },
   },
-  suppliedAsset: new AssetAmount(25_000_000n, poolData.assetA),
+  suppliedAsset: new AssetAmount(
+    BigInt(amount * 1_000_000),
+    isFromAda ? poolData.assetA : poolData.assetB
+  )
 };
+```
 
-The swapType can be more than one type (see documentation), but in our case we are setting it to a market order, with a slippage of 0.3% (represented as a number).
-The poolData we queried before is added as the pool we’re swapping against.
-The OrderAddresses.DestinationAddress is just as it sounds: the destination of the scooped swap. Conceptually, the initial order submission will be deposited in a type of escrow account (a smart contract). From there, any on of the SundaeSwap scoopers will process this order, and send the result to whatever we set in this field. In our case, we don’t need to attach a datum, since it is going to our wallet address.
-The suppliedAsset is how much of our wallet’s asset we are supplying to the pool. In our case, we want to supply 25 tADA (assetA of the poolData object), and receive the matching RBERRY with an acceptable slippage tolerance of 0.03%.
-3. Requesting a Signature & Submitting
-Finally, once we have our configuration all set for the swap, we can build the transaction. Since we’re swapping against a V3 pool, let’s import the required types:
+### 3. Building and Submitting the Transaction
 
-import {
-  // ...rest of imports
-  EContractVersion,
-} from "@sundaeswap/core";
+The transaction is built using the SundaeSwap V3 transaction builder:
 
-// ...rest of our code
+```javascript
+const txBuilder = new TxBuilderLucidV3(
+  lucid,
+  new DatumBuilderLucidV3("mainnet")
+);
 
-const { build, fees } = await SDK.builder(EContractVersion.V3).swap(args);
-
-Here we select the SDK.builder() property. By default, the builder uses V1 contracts, so we pass in EContractVersion.V3 as a parameter.
-From there, we can access the .swap() method, and pass in our configured args from the previous step.
-The returned build property is what we will use in the next bit of code to actually build the transaction.
-The returned fees property is what you can use to get visibility into scooper fees, deposits, and possible referrals (tutorial upcoming).
-Next, let’s go ahead and build the transaction and request a signature:
-
-// ... rest of our code
-
+const { build } = await txBuilder.swap(args);
 const builtTx = await build();
-const { submit, cbor } = await builtTx.sign();
-
+const { submit } = await builtTx.sign();
 const txHash = await submit();
+```
 
-First, we build() the transaction. This removes the details from memory, so manipulating the transaction details after this point is impossible aside form signing it.
-Once we have a built transaction, we can access two things. 1) The submit method does what it sounds like: it submits the signed transaction transaction and returns the transaction hash for your record keeping and lookup. 2) The cbor property is the signed transaction in its fullness, which can then be used for many other things, including future support for multi-sig orders, manual entry to a different node, etc.
-And that’s it! Congratulations on your first manually built order on the SundaeSwap protocol. Your submitted transaction with ensured datum correctness is now in the queue, and you should receive your corresponding RBERRY within a minute on preview during normal operation.
+## Project Structure
+
+```
+ada-swap/
+├── adaUsdmSwap.js    # Core swap functionality
+├── server.js         # Express API server
+├── test.js          # Test file
+├── package.json     # Dependencies
+├── .env            # Environment variables (not committed)
+└── README.md       # This file
+```
+
+## Dependencies
+
+- `@sundaeswap/core` - SundaeSwap SDK
+- `lucid-cardano` - Cardano transaction building
+- `@blockfrost/blockfrost-js` - Blockfrost API client
+- `express` - Web server framework
+- `dotenv` - Environment variable management
+
+## Configuration
+
+### Default Pool
+
+The application is configured for the ADA/USDM pool:
+
+- **Pool ID**: `64f35d26b237ad58e099041bc14c687ea7fdc58969d7d5b66e2540ef`
+- **USDM Token**:
+  - Policy ID: `c48cbb3d5e57ed56e276bc45f99ab39abe94e6cd7ac39fb402da47ad`
+  - Asset Name: `5553444d`
+
+### Slippage
+
+Default slippage is set to 3% (0.03). This can be modified in `adaUsdmSwap.js`:
+
+```javascript
+swapType: {
+  type: ESwapType.MARKET,
+  slippage: 0.03,  // Change this value (0.01 = 1%, 0.05 = 5%)
+}
+```
+
+## Security Considerations
+
+- **Never commit** your `.env` file or mnemonic seed phrase
+- **Use environment variables** for sensitive data
+- **Test on testnet first** before using mainnet
+- **Verify transaction details** before signing
+- **Keep your mnemonic secure** - anyone with access can control your wallet
+
+## Troubleshooting
+
+### "Insufficient funds"
+
+- Ensure you have enough ADA for:
+  - The swap amount
+  - Transaction fees (~0.17 ADA)
+  - SundaeSwap scooper fees
+
+### "Pool not found"
+
+- Verify the pool ID is correct
+- Check that the pool exists on mainnet
+- Ensure you're using the correct network configuration
+
+### "Transaction failed"
+
+- Check your wallet balance
+- Verify the pool has sufficient liquidity
+- Ensure slippage tolerance is appropriate
+- Check Blockfrost API key is valid
+
+### "Invalid mnemonic"
+
+- Verify your mnemonic is 12 or 24 words
+- Ensure words are separated by spaces
+- Check for typos in the seed phrase
+
+## Network Configuration
+
+Currently configured for **Cardano Mainnet**. To switch to testnet:
+
+1. Update Blockfrost endpoint in `adaUsdmSwap.js`:
+   ```javascript
+   "https://cardano-preview.blockfrost.io/api/v0"
+   ```
+
+2. Change network parameter:
+   ```javascript
+   "Preview"
+   ```
+
+3. Use testnet pool IDs and tokens
+
+## API Rate Limits
+
+Blockfrost free tier limits:
+- 100 requests per second
+- 10,000 requests per day
+
+Monitor your usage to avoid rate limiting.
+
+## Additional Resources
+
+- [SundaeSwap Documentation](https://docs.sundaeswap.finance/)
+- [Lucid Cardano Documentation](https://lucid.spacebudz.io/)
+- [Blockfrost API Documentation](https://blockfrost.io/)
+- [Cardano Documentation](https://docs.cardano.org/)
+
+## License
+
+[Add your license here]
+
+## Contributing
+
+[Add contribution guidelines here]
+
+---
+
+**Warning**: This application interacts with real funds on Cardano mainnet. Always test thoroughly and use at your own risk. Never share your mnemonic seed phrase or commit sensitive credentials to version control.
