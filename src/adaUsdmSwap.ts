@@ -16,10 +16,7 @@ async function initializeLucid(): Promise<Lucid> {
   }
 
   return await Lucid.new(
-    new Blockfrost(
-      "https://cardano-mainnet.blockfrost.io/api/v0",
-      apiKey
-    ),
+    new Blockfrost("https://cardano-mainnet.blockfrost.io/api/v0", apiKey),
     "Mainnet"
   );
 }
@@ -139,4 +136,3 @@ async function main(): Promise<void> {
 if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
-

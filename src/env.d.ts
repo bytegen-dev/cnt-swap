@@ -5,4 +5,3 @@ declare namespace NodeJS {
     PORT?: string;
   }
 }
-
